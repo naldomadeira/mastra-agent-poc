@@ -264,3 +264,18 @@ nenhuma comparação foi feita ainda.
 | Four-eyes (aprovador ≠ solicitante)   | self-approval de manager mantido para demo com um usuário             | `approver.id !== actor.id` em `consumeApproval`                         |
 | RLS para cenários customer-facing     | a POC atende operadores internos                                      | policies RLS por cliente + role por sessão                              |
 | OpenTelemetry                         | tracing nativo do Mastra foi suficiente                               | exporter OTel (`@mastra/observability` bridges)                         |
+
+## Fase 13 — Agent Core Extraction `[x]`
+
+A Fase 13 extraiu o contrato arquitetural comum demonstrado pelas duas POCs, sem introduzir uma terceira implementação de runtime.
+
+- [x] Fronteira Agent Core/runtime documentada em `specs/phase-13-agent-core-extraction.md`.
+- [x] Contrato conceitual v0.1 em `specs/agent-core-contract.md`.
+- [x] Capability, Registry e Executor identificados como abstrações comuns.
+- [x] Actor/context, autorização, aprovação e auditoria definidos como infraestrutura independente do runtime.
+- [x] Read, domain action e workflow capabilities diferenciadas.
+- [x] Responsabilidades específicas do Mastra mantidas no adapter/runtime.
+- [x] Regras de segurança documentadas como invariantes da aplicação, não do prompt.
+- [x] Nenhuma mudança funcional na POC.
+
+A extração deliberadamente permanece como contrato/documentação. Um pacote compartilhado só deve ser criado depois de validar o contrato em uma terceira aplicação real, evitando abstração prematura.
