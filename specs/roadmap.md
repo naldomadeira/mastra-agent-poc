@@ -216,6 +216,12 @@ Consequências:
   read-only garantido pelos grants e não pelo padrão de sessão (EV-08b). Detalhes em
   [evaluation.md](evaluation.md).
 - Nenhuma funcionalidade de produto alterada; findings registrados, não corrigidos.
+- Pós-avaliação:
+  - convenção de busca de nomes (`ILIKE`) em `inspectSchema` após a falha do EV-02 numa segunda
+    amostra; EV-02 passou em 5/5 execuções depois do ajuste;
+  - correção de bug encontrado no teste manual: reabrir uma conversa antiga mostrava de novo os
+    botões de aprovação de um workflow já decidido, e aprovar gerava erro 500. A rota agora
+    responde 409 (`ALREADY_DECIDED`) e o cartão consulta o estado real do run (`GET`) ao abrir.
 - Testes: 118 (`tests/unit/eval-cases.test.ts`, `tests/integration/eval-adversarial.test.ts`).
 
 ---

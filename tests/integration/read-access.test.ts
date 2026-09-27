@@ -100,6 +100,8 @@ describe('Database Agent Access (read-only)', () => {
       expect(customers?.columns.map((c) => c.name)).not.toContain('email');
       expect(schema.relations.find((r) => r.name === 'order_overview')?.description).toContain('is_late');
       expect(schema.foreignKeys).toContainEqual({ from: 'orders.customer_id', to: 'customers.id' });
+      // Convenção adicionada após o EV-02 live: busca de nomes por correspondência parcial.
+      expect(schema.conventions.join(' ')).toContain('ILIKE');
     });
   });
 

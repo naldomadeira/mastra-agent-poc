@@ -18,7 +18,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ runId: 
     const { approved } = z.object({ approved: z.boolean() }).parse(await req.json());
     if (approved) assertCan(actor, 'notifications:send');
 
-    const run = await mastra.getWorkflow(LATE_ORDER_WORKFLOW_ID).createRun({ runId });
+    const workflow = mastra.getWorkflow(LATE_ORDER_WORKFLOW_ID);
+    // Decisão só vale para run ainda suspenso. Um cartão antigo (conversa reaberta) não pode
+    // retomar de novo: responde 409 com o estado atual em vez de erro 500.
+    const current = await workflow.getWorkflowRunById(runId);
+    if (!current) {
+      return NextResponse.json({ error: { code: 'NOT_FOUND', message: 'Execução não encontrada.' } }, { status: 404 });
+    }
+    if (current.status !== 'suspended') {
+      return NextResponse.json(
+        {
+          error: { code: 'ALREADY_DECIDED', message: `Esta execução já foi decidida (status: ${current.status}).` },
+          ...runView(current),
+        },
+        { status: 409 },
+      );
+    }
+
+    const run = await workflow.createRun({ runId });
     const result = await run.resume({ step: 'request-approval', resumeData: { approved, approverId: actor.id } });
 
     await getDeps().uow.repos.audit.record({
@@ -39,9 +56,32 @@ export async function POST(req: Request, { params }: { params: Promise<{ runId: 
     return NextResponse.json({
       status: result.status,
       result: result.status === 'success' ? result.result : null,
-      error: result.status === 'failed' ? String(result.error) : null,
+      failure: result.status === 'failed' ? String(result.error) : null,
     });
   } catch (error) {
     return errorResponse(error);
   }
+}
+
+/** Estado atual do run, para o cartão da UI não oferecer decisão sobre um run já concluído. */
+export async function GET(_req: Request, { params }: { params: Promise<{ runId: string }> }) {
+  try {
+    await getCurrentActor();
+    const { runId } = await params;
+    const current = await mastra.getWorkflow(LATE_ORDER_WORKFLOW_ID).getWorkflowRunById(runId);
+    if (!current) {
+      return NextResponse.json({ error: { code: 'NOT_FOUND', message: 'Execução não encontrada.' } }, { status: 404 });
+    }
+    return NextResponse.json(runView(current));
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+function runView(state: { status: string; result?: unknown; error?: unknown }) {
+  return {
+    status: state.status,
+    result: state.status === 'success' ? (state.result ?? null) : null,
+    failure: state.status === 'failed' ? String(state.error) : null,
+  };
 }

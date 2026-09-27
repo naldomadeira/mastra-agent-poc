@@ -190,7 +190,8 @@ action por intenção de negócio que o usuário realmente pede ao agente.**
 ## 7. Limitações conhecidas
 
 - Autenticação é de demonstração (cookie de operador). Em produção: sessão real → mesmo `Actor`.
-- Métricas agregadas do Studio exigem store OLAP; os traces funcionam em Postgres.
+- Métricas agregadas do Studio exigem store OLAP; os traces funcionam em Postgres. O aviso `This storage provider does not support batch creating metrics`
+  no log do servidor é essa limitação (inofensivo).
 - MCP expõe só leitura e só via stdio (ADR 006).
 - Notificação é simulada (grava em `notifications`).
 - O guard SQL é léxico (defesa em profundidade). A garantia forte é a role + transação read-only.

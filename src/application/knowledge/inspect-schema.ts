@@ -27,6 +27,7 @@ const CONVENTIONS = [
   'Datas são timestamptz; a sessão de consulta usa o fuso da aplicação, então ::date e date_trunc já respeitam o "hoje" local.',
   'Prefira as views order_overview, customer_spend e product_sales: elas codificam as definições de negócio (atraso, receita).',
   'O schema mostrado é exatamente o que a role do agente pode ler; colunas omitidas (ex.: e-mail) não são acessíveis.',
+  'Nomes de pessoas são nomes completos (ex.: "João Silva"). Ao buscar por nome informado pelo usuário, use correspondência parcial e sem diferenciar maiúsculas: customer_name ILIKE \'%João%\'. Se houver mais de um cliente, liste-os.',
 ];
 
 /**

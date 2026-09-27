@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type Notification = { customerId: number; customerName: string; orderIds: number[]; subject: string; message: string };
 type Skipped = { orderId: number; customerId: number; reason: string };
@@ -6,7 +6,7 @@ type Preview = { notifications?: Notification[]; skipped?: Skipped[] };
 type Outcome = {
   status: string;
   result: { status: string; sent: { customerId: number }[]; failed: { customerId: number; error: string }[] } | null;
-  error: string | null;
+  failure: string | null;
 };
 
 type Props = { output: unknown };
@@ -17,8 +17,24 @@ export function WorkflowRunCard({ output }: Props) {
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [liveStatus, setLiveStatus] = useState<string | null>(null);
+
+  // A prévia vem do histórico da conversa e pode estar desatualizada (ex.: conversa reaberta
+  // depois da decisão). O estado real do run é consultado no servidor.
+  useEffect(() => {
+    if (!runId) return;
+    fetch(`/api/workflows/late-order-notifications/${runId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((current: Outcome | null) => {
+        if (!current) return;
+        setLiveStatus(current.status);
+        if (current.status !== 'suspended') setOutcome(current);
+      })
+      .catch(() => undefined);
+  }, [runId]);
 
   if (!runId) return null;
+  const currentStatus = outcome?.status ?? liveStatus ?? status;
   const notifications = preview?.notifications ?? [];
   const skipped = preview?.skipped ?? [];
 
@@ -33,17 +49,20 @@ export function WorkflowRunCard({ output }: Props) {
     const body = await res.json();
     setSending(false);
     if (res.ok) setOutcome(body);
-    else setError(body.error?.message ?? 'Falha ao retomar o workflow');
+    else {
+      setError(body.error?.message ?? 'Falha ao retomar o workflow');
+      if (body.status) setOutcome({ status: body.status, result: body.result ?? null, failure: body.failure ?? null });
+    }
   }
 
   return (
     <div className="space-y-3 rounded-md border border-violet-200 bg-violet-50 p-3">
       <p className="text-xs text-violet-800">
         Workflow determinístico <span className="font-mono">lateOrderNotificationWorkflow</span> · run{' '}
-        <span className="font-mono">{runId.slice(0, 8)}</span> · {status}
+        <span className="font-mono">{runId.slice(0, 8)}</span> · {currentStatus}
       </p>
 
-      {notifications.length === 0 && status !== 'suspended' && <p>Nenhuma notificação a enviar.</p>}
+      {notifications.length === 0 && currentStatus !== 'suspended' && <p>Nenhuma notificação a enviar.</p>}
 
       {notifications.map((n) => (
         <div key={n.customerId} className="rounded border border-violet-100 bg-white p-2">
@@ -68,7 +87,7 @@ export function WorkflowRunCard({ output }: Props) {
         </div>
       )}
 
-      {status === 'suspended' && !outcome && (
+      {currentStatus === 'suspended' && !outcome && (
         <div className="flex gap-2">
           <button
             disabled={sending}
@@ -99,7 +118,7 @@ export function WorkflowRunCard({ output }: Props) {
           ))}
         </p>
       )}
-      {outcome?.error && <p className="text-red-700">{outcome.error}</p>}
+      {outcome?.failure && <p className="text-red-700">{outcome.failure}</p>}
       {error && <p className="text-red-700">{error}</p>}
     </div>
   );
