@@ -14,4 +14,19 @@ export type ActionContext = {
   runId?: string;
   /** Identifica a solicitação do agente; é a chave da evidência de aprovação (action_approvals). */
   toolCallId?: string;
+  /** Requisição de origem (x-request-id), para correlacionar eventos na auditoria. */
+  correlationId?: string;
+  /**
+   * Proveniência de uma execução feita em nome de outra decisão (ex.: envio do workflow após
+   * aprovação em lote). Preenchida pelo chamador DEPOIS de verificar/consumir a aprovação.
+   * Usada SOMENTE para auditoria; nunca para autorização.
+   */
+  provenance?: Provenance;
+};
+
+export type Provenance = {
+  requestedBy: string;
+  approvalId?: string;
+  approvedBy?: string;
+  approvedAt?: Date;
 };

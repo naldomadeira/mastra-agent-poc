@@ -48,3 +48,14 @@ regressão em `tests/integration/approval.test.ts`.
   a mais na policy (`approver.id !== actor.id`).
 - Aprovações sobrevivem a restart porque o snapshot do run está no Postgres
   (`agent.listSuspendedRuns` permite rediscovery).
+
+## Adendo (2026-09-27) — aprovação do workflow e tentativas recusadas
+
+- A decisão sobre o envio em lote segue o mesmo modelo: evidência persistida em `action_approvals`
+  (chave `wf:<workflow>:<runId>`, primeira decisão vence), auditada **antes** da retomada e
+  consumida uma única vez pelo passo de envio. Uma retomada que não passou pela decisão registrada
+  falha sem enviar nada (`decideLateOrderNotifications`).
+- O envio executa em nome do **solicitante**; o aprovador, a `approval_id` e o momento da decisão
+  ficam na própria linha de auditoria de cada envio.
+- Decisões recusadas (já decididas, concorrentes, sem permissão, run inexistente) e decisões
+  repetidas no chat são auditadas como `denied`, com código e `correlation_id`.

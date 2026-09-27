@@ -23,3 +23,4 @@ Toda especificação, decisão e plano da POC fica aqui.
 | [004](decisions/004-authorization-and-human-approval.md) | Autorização no backend e aprovação humana em duas camadas (evidência persistida) |
 | [005](decisions/005-agent-vs-workflow.md)                | Quando usar Agent e quando usar Workflow                                         |
 | [006](decisions/006-mcp-strategy.md)                     | Estratégia MCP: capabilities de leitura via stdio primeiro                       |
+| [007](decisions/007-agent-generated-content.md)          | **Proposta:** conteúdo livre gerado pelo agente em ações com efeito externo      |

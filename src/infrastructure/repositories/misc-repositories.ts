@@ -67,8 +67,9 @@ export function pgAuditRepository(db: Queryable): AuditRepository {
       await db.query(
         `INSERT INTO audit_log(actor_id, actor_role, channel, agent_id, thread_id, run_id, tool_call_id,
                                capability, kind, input, outcome, result, error,
-                               approval_required, approved_by, approved_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+                               approval_required, approved_by, approved_at,
+                               requested_by, approval_id, correlation_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
         [
           e.actorId,
           e.actorRole,
@@ -86,6 +87,9 @@ export function pgAuditRepository(db: Queryable): AuditRepository {
           e.approvalRequired ?? false,
           e.approvedBy ?? null,
           e.approvedAt ?? null,
+          e.requestedBy ?? null,
+          e.approvalId ?? null,
+          e.correlationId ?? null,
         ],
       );
     },
@@ -95,7 +99,7 @@ export function pgAuditRepository(db: Queryable): AuditRepository {
 export function pgApprovalRepository(db: Queryable): ApprovalRepository {
   return {
     async record(d, at) {
-      await db.query(
+      const res = await db.query(
         `INSERT INTO action_approvals(tool_call_id, run_id, thread_id, capability, input, approved, approver_id, reason, decided_at)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (tool_call_id) DO NOTHING`,
         [
@@ -110,6 +114,7 @@ export function pgApprovalRepository(db: Queryable): ApprovalRepository {
           at,
         ],
       );
+      return res.rowCount === 1;
     },
     async findByToolCallId(toolCallId) {
       const { rows } = await db.query(

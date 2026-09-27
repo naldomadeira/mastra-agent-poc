@@ -3,12 +3,13 @@ import { toAISdkMessages } from '@mastra/ai-sdk/ui';
 import { createUIMessageStreamResponse, type UIMessage } from 'ai';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { correlationIdOf } from '@/app/_lib/correlation';
 import { errorResponse } from '@/app/_lib/http';
 import { getCurrentActor } from '@/app/_lib/session';
 import type { Actor } from '@/domain/operators/operator';
 import { getDeps } from '@/infrastructure/app-services';
 import { mastra } from '@/mastra';
-import { extractApprovalDecisions, type ApprovalDecision } from '@/mastra/approvals';
+import { extractApprovalDecisions, recordAgentApprovalDecisions } from '@/mastra/approvals';
 import { COMMERCE_AGENT_ID, createCommerceContext } from '@/mastra/request-context';
 
 export const dynamic = 'force-dynamic';
@@ -35,7 +36,12 @@ export async function POST(req: Request) {
 
     // Decisões de Aprovar/Rejeitar vindas da UI viram evidência persistida, com o operador da
     // sessão como aprovador. O domínio exige e consome essa evidência (ADR 004).
-    await recordApprovalDecisions(extractApprovalDecisions(body.messages.at(-1)), actor, body.id);
+    const correlationId = correlationIdOf(req);
+    await recordAgentApprovalDecisions(getDeps(), extractApprovalDecisions(body.messages.at(-1)), {
+      actor,
+      threadId: body.id,
+      correlationId,
+    });
 
     const stream = await handleChatStream({
       mastra,
@@ -45,14 +51,14 @@ export async function POST(req: Request) {
         messages: body.messages,
         trigger: body.trigger,
         memory: { thread: body.id, resource: actor.id },
-        requestContext: createCommerceContext({ actor, channel: 'agent' }),
+        requestContext: createCommerceContext({ actor, channel: 'agent', correlationId }),
       },
       onError: (error) => {
         console.error('[chat] erro no stream do agente', error);
         return 'O agente falhou ao processar a solicitação. Veja os logs do servidor.';
       },
     });
-    return createUIMessageStreamResponse({ stream });
+    return createUIMessageStreamResponse({ stream, headers: { 'x-request-id': correlationId } });
   } catch (error) {
     return errorResponse(error);
   }
@@ -82,41 +88,5 @@ async function assertThreadOwnership(threadId: string, actor: Actor): Promise<vo
     throw new z.ZodError([
       { code: 'custom', path: ['id'], message: 'Conversa pertence a outro operador', input: threadId },
     ]);
-  }
-}
-
-/** Aprovações concedidas são auditadas pela própria Domain Action ao executar; recusas, aqui. */
-async function recordApprovalDecisions(decisions: ApprovalDecision[], actor: Actor, threadId: string): Promise<void> {
-  const { uow, now } = getDeps();
-  for (const d of decisions) {
-    await uow.repos.approvals.record(
-      {
-        toolCallId: d.toolCallId,
-        runId: d.runId,
-        threadId,
-        capability: d.toolName,
-        input: d.input,
-        approved: d.approved,
-        approverId: actor.id,
-        reason: d.reason,
-      },
-      now(),
-    );
-    if (d.approved) continue;
-    await uow.repos.audit.record({
-      actorId: actor.id,
-      actorRole: actor.role,
-      channel: 'agent',
-      agentId: COMMERCE_AGENT_ID,
-      threadId,
-      runId: d.runId,
-      toolCallId: d.toolCallId,
-      capability: d.toolName,
-      kind: 'action',
-      input: d.input ?? {},
-      outcome: 'rejected',
-      error: `Aprovação recusada por ${actor.name}${d.reason ? `: ${d.reason}` : ''}`,
-      approvalRequired: true,
-    });
   }
 }

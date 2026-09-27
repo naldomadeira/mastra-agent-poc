@@ -10,6 +10,8 @@ import type { Actor } from '../domain/operators/operator';
 export type CommerceContext = {
   actor: Actor;
   channel: Channel;
+  /** x-request-id da requisição de origem */
+  correlationId?: string;
 };
 
 const ActorSchema = z.object({ id: z.string(), name: z.string(), role: z.enum(['viewer', 'support', 'manager']) });
@@ -18,6 +20,7 @@ export function createCommerceContext(value: CommerceContext): RequestContext {
   const ctx = new RequestContext();
   ctx.set('actor', value.actor);
   ctx.set('channel', value.channel);
+  if (value.correlationId) ctx.set('correlationId', value.correlationId);
   return ctx;
 }
 
@@ -43,5 +46,6 @@ export function actionContextFrom(context: ToolContextLike | undefined): ActionC
     threadId: context?.agent?.threadId,
     runId: context?.workflow?.runId,
     toolCallId,
+    correlationId: context?.requestContext?.get('correlationId') as string | undefined,
   };
 }

@@ -45,8 +45,11 @@ export interface AuditRepository {
 }
 
 export interface ApprovalRepository {
-  /** Registra a decisão; a primeira decisão para um toolCallId prevalece. */
-  record(decision: ApprovalDecision, at: Date): Promise<void>;
+  /**
+   * Registra a decisão; a primeira decisão para uma chave prevalece.
+   * Retorna false se já havia decisão (a existente não é alterada).
+   */
+  record(decision: ApprovalDecision, at: Date): Promise<boolean>;
   findByToolCallId(toolCallId: string): Promise<StoredApproval | null>;
   /** Marca como usada; retorna false se já estava consumida. */
   markConsumed(toolCallId: string, at: Date): Promise<boolean>;

@@ -13,7 +13,7 @@ type Spec<I, R> = {
 };
 
 /** Preenchido pela ação quando ela valida uma aprovação, para constar na auditoria. */
-export type ApprovalMeta = { approvedBy?: string; approvedAt?: Date };
+export type ApprovalMeta = { approvedBy?: string; approvedAt?: Date; approvalId?: string };
 
 /**
  * Executa uma Domain Action com trilha de auditoria:
@@ -51,7 +51,12 @@ function auditBase<I, R>({ capability, input, ctx, approvalRequired }: Spec<I, R
     capability,
     kind: 'action',
     input,
-    approvalRequired: approvalRequired ?? false,
+    approvalRequired: (approvalRequired ?? false) || Boolean(ctx.provenance?.approvalId),
+    requestedBy: ctx.provenance?.requestedBy ?? ctx.actor.id,
+    approvalId: ctx.provenance?.approvalId,
+    approvedBy: ctx.provenance?.approvedBy,
+    approvedAt: ctx.provenance?.approvedAt,
+    correlationId: ctx.correlationId,
   };
 }
 

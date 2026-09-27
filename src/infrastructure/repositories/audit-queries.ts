@@ -19,6 +19,9 @@ export type AuditRow = {
   approval_required: boolean;
   approved_by: string | null;
   approved_at: Date | null;
+  requested_by: string | null;
+  approval_id: string | null;
+  correlation_id: string | null;
 };
 
 /** Leitura operacional da trilha de auditoria (não exposta ao agente). */

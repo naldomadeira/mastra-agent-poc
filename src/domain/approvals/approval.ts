@@ -36,7 +36,7 @@ export function canonicalJson(value: unknown): string {
 export async function consumeApproval(
   repos: Repositories,
   spec: { toolCallId: string | undefined; capability: string; input: unknown; permission: Permission; now: Date },
-): Promise<Actor> {
+): Promise<{ approver: Actor; approval: StoredApproval }> {
   const missing = new DomainError(
     'APPROVAL_REQUIRED',
     'Esta ação exige aprovação humana registrada para esta solicitação.',
@@ -57,5 +57,5 @@ export async function consumeApproval(
   if (!(await repos.approvals.markConsumed(spec.toolCallId, spec.now))) {
     throw new DomainError('APPROVAL_REQUIRED', 'Esta aprovação já foi utilizada.');
   }
-  return approver;
+  return { approver, approval };
 }

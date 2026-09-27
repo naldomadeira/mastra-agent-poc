@@ -9,6 +9,7 @@ import { seed } from '../../src/infrastructure/database/seed';
 import { createCommerceAgent } from '../../src/mastra/agents/commerce-agent';
 import { COMMERCE_AGENT_ID, createCommerceContext } from '../../src/mastra/request-context';
 import { actionTools, readTools, workflowTools } from '../../src/mastra/tools';
+import { decideLateOrderNotifications } from '../../src/mastra/workflows/late-order-decision';
 import {
   LATE_ORDER_WORKFLOW_ID,
   lateOrderNotificationWorkflow,
@@ -188,11 +189,16 @@ export class MastraTarget implements EvalTarget {
       case 'resumeWorkflow': {
         const run = state.get(step.ref) as WorkflowRun | undefined;
         if (!run) throw new Error(`Workflow run não iniciado: ${step.ref}`);
-        const result = await run.resume({
-          step: 'request-approval',
-          resumeData: { approved: step.approved, approverId: step.approver },
+        // Mesmo caminho da rota HTTP: persiste a decisão, audita e retoma.
+        const outcome = await decideLateOrderNotifications(this.mastra, getDeps(), {
+          runId: run.runId,
+          approved: step.approved,
+          actor: await this.actor(step.approver),
         });
-        return workflowOutcome(step.op, result, step.expectStatus);
+        if (outcome.kind === 'denied') {
+          return { op: step.op, outcome: `denied:${outcome.code}`, ok: false, detail: outcome.message };
+        }
+        return workflowOutcome(step.op, { status: outcome.run.status, result: outcome.run.result }, step.expectStatus);
       }
 
       case 'checkpoint':

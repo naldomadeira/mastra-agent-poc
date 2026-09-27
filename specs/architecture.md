@@ -126,6 +126,14 @@ Regra violada → { ok: false, code, error } → o modelo explica. Nada muda no 
 - **Trilha de negócio** (`audit_log`): toda capability, em qualquer canal. Responde quem pediu,
   qual agente/thread/run/toolCall, capability, parâmetros, resultado, erro, se exigiu aprovação,
   quem aprovou e quando. UI em `/audit`.
+- **Proveniência em cada linha** (migration 0005): `actor_id` (em nome de quem executou),
+  `requested_by` (quem solicitou), `approved_by` + `approved_at` (quem aprovou e quando a decisão
+  ocorreu), `approval_id` (evidência em `action_approvals`), `run_id`, `correlation_id`
+  (`x-request-id`). Envios do workflow carregam a aprovação do lote na própria linha; a decisão é
+  auditada **antes** da retomada, preservando a ordem causal.
+- **Tentativas recusadas** também são eventos: decisões repetidas/concorrentes (`ALREADY_DECIDED`),
+  sem permissão (`FORBIDDEN`) ou sobre run inexistente (`NOT_FOUND`) geram `outcome = denied` com
+  motivo, sem alterar aprovação, run ou dados.
 - **Tracing técnico** (Mastra): spans de inferência, tool, memória e workflow no schema `mastra`,
   com `actor`/`channel` como metadados, visíveis no Studio (`pnpm dev:mastra`).
 - Regra prática: **a auditoria é a fonte da verdade sobre o que aconteceu, não o texto do

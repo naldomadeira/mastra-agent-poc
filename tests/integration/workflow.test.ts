@@ -4,6 +4,8 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { closePools, getAppPool } from '../../src/infrastructure/database/pool';
 import { createCommerceAgent } from '../../src/mastra/agents/commerce-agent';
 import { COMMERCE_AGENT_ID, createCommerceContext } from '../../src/mastra/request-context';
+import { getDeps } from '../../src/infrastructure/app-services';
+import { decideLateOrderNotifications } from '../../src/mastra/workflows/late-order-decision';
 import {
   LATE_ORDER_WORKFLOW_ID,
   lateOrderNotificationWorkflow,
@@ -22,12 +24,15 @@ function mastraWith(turns: Parameters<typeof scriptedModel>[0] = []) {
 }
 
 async function start(actor = bruno) {
-  const run = await mastraWith().getWorkflow(LATE_ORDER_WORKFLOW_ID).createRun();
+  const mastra = mastraWith();
+  const run = await mastra.getWorkflow(LATE_ORDER_WORKFLOW_ID).createRun();
   const result = await run.start({
     inputData: { maxOrders: 50 },
     requestContext: createCommerceContext({ actor, channel: 'workflow' }),
   });
-  return { run, result };
+  const decide = (approved: boolean, approver = ana) =>
+    decideLateOrderNotifications(mastra, getDeps(), { runId: run.runId, approved, actor: approver });
+  return { run, result, decide };
 }
 
 const notificationCount = async () =>
@@ -51,13 +56,14 @@ describe('lateOrderNotificationWorkflow', () => {
     expect(await notificationCount()).toBe(0);
   });
 
-  it('após aprovação envia via caso de uso de domínio, em nome do aprovador', async () => {
-    const { run } = await start();
-    const resumed = await run.resume({ step: 'request-approval', resumeData: { approved: true, approverId: 'ana' } });
-    expect(resumed.status).toBe('success');
-    expect(resumed.status === 'success' && resumed.result).toMatchObject({
+  it('após aprovação envia via caso de uso de domínio, em nome do solicitante', async () => {
+    const { run, decide } = await start();
+    const outcome = await decide(true);
+    expect(outcome).toMatchObject({ kind: 'decided', run: { status: 'success' } });
+    expect(outcome.kind === 'decided' && outcome.run.result).toMatchObject({
       status: 'sent',
       approverId: 'ana',
+      requestedBy: 'bruno',
       failed: [],
     });
     expect(await notificationCount()).toBe(2);
@@ -65,19 +71,20 @@ describe('lateOrderNotificationWorkflow', () => {
       `SELECT actor_id, channel, run_id FROM audit_log WHERE capability = 'sendCustomerNotification'`,
     );
     expect(audit.rows).toHaveLength(2);
-    expect(audit.rows[0]).toMatchObject({ actor_id: 'ana', channel: 'workflow', run_id: run.runId });
+    // Executa em nome de quem solicitou; o aprovador fica na própria linha.
+    expect(audit.rows[0]).toMatchObject({ actor_id: 'bruno', channel: 'workflow', run_id: run.runId });
   });
 
   it('rejeição encerra sem enviar', async () => {
-    const { run } = await start();
-    const resumed = await run.resume({ step: 'request-approval', resumeData: { approved: false, approverId: 'ana' } });
-    expect(resumed.status === 'success' && resumed.result).toMatchObject({ status: 'rejected', sent: [] });
+    const { decide } = await start();
+    const outcome = await decide(false);
+    expect(outcome.kind === 'decided' && outcome.run.result).toMatchObject({ status: 'rejected', sent: [] });
     expect(await notificationCount()).toBe(0);
   });
 
   it('é idempotente por regra: pedidos avisados nas últimas 24h são ignorados', async () => {
     const first = await start();
-    await first.run.resume({ step: 'request-approval', resumeData: { approved: true, approverId: 'ana' } });
+    await first.decide(true);
     const { result } = await start();
     expect(result.status).toBe('success');
     expect(result.status === 'success' && result.result).toMatchObject({ status: 'nothing-to-send' });

@@ -49,14 +49,19 @@ export async function refundPayment(
       // Canal automatizado: exige e consome a evidência persistida de aprovação desta tool call.
       let approver: Actor = ctx.actor;
       if (approvalRequired) {
-        approver = await consumeApproval(repos, {
+        const consumed = await consumeApproval(repos, {
           toolCallId: ctx.toolCallId,
           capability: 'refundPayment',
           input,
           permission: 'payments:refund:approve',
           now,
         });
-        Object.assign(meta, { approvedBy: approver.id, approvedAt: now });
+        approver = consumed.approver;
+        Object.assign(meta, {
+          approvedBy: approver.id,
+          approvedAt: consumed.approval.decidedAt,
+          approvalId: consumed.approval.toolCallId,
+        });
       } else {
         assertCan(ctx.actor, 'payments:refund:approve');
       }

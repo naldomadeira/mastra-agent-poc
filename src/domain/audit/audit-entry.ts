@@ -19,4 +19,10 @@ export type AuditEntry = {
   approvalRequired?: boolean;
   approvedBy?: string;
   approvedAt?: Date;
+  /** Quem originou a solicitação (padrão: o próprio ator). */
+  requestedBy?: string;
+  /** Evidência em action_approvals que autorizou a execução. */
+  approvalId?: string;
+  /** Requisição de origem (x-request-id). */
+  correlationId?: string;
 };

@@ -63,6 +63,12 @@ export default async function AuditPage({ searchParams }: PageProps<'/audit'>) {
                 <td className="px-3 py-2 whitespace-nowrap">{e.occurred_at.toLocaleString('pt-BR')}</td>
                 <td className="px-3 py-2">
                   {e.actor_id} <span className="text-zinc-400">({e.actor_role})</span>
+                  {e.requested_by && e.requested_by !== e.actor_id && (
+                    <div className="text-zinc-500">solicitado por {e.requested_by}</div>
+                  )}
+                  {e.correlation_id && (
+                    <div className="font-mono text-[10px] text-zinc-400">req {e.correlation_id.slice(0, 8)}</div>
+                  )}
                 </td>
                 <td className="px-3 py-2">{e.channel}</td>
                 <td className="px-3 py-2 font-mono text-[11px] text-zinc-500">
@@ -85,6 +91,9 @@ export default async function AuditPage({ searchParams }: PageProps<'/audit'>) {
                       <>
                         aprovado por <b>{e.approved_by}</b>
                         <div className="text-zinc-400">{e.approved_at?.toLocaleString('pt-BR')}</div>
+                        {e.approval_id && (
+                          <div className="font-mono text-[10px] break-all text-zinc-400">{e.approval_id}</div>
+                        )}
                       </>
                     ) : (
                       'exigida — não concedida'
