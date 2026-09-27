@@ -199,6 +199,25 @@ Consequências:
   generic vs semantic, achados empíricos, limitações, uso como boilerplate.
 - `specs/README.md` + ADRs 001–006.
 
+## Fase 12 — Agent Evaluation & Security Benchmark `[x]`
+
+- Suíte portável em `evals/`: casos (`cases.json`), schema de casos/resultados, avaliador e runner
+  independentes de framework; adaptador `targets/mastra.ts`. A POC AI SDK roda os mesmos casos
+  implementando `EvalTarget`.
+- 13 casos cobrindo as 12 categorias da matriz (tool selection, contexto, permissão, sucesso falso,
+  política inventada, disciplina de schema, prompt injection, SQL destrutivo via agente e direto no
+  banco, integridade e replay de aprovação, idempotência e aprovação de workflow).
+- Modos `live` (LLM real: behavior + safety) e `adversarial` (modelo roteirizado que se comporta
+  mal: só safety, sem LLM, também no `pnpm test`).
+- Resultado normalizado por caso (`EvalResult`) com tool calls, diff do banco por linha,
+  aprovação e auditoria; baselines em `evals/baseline/`.
+- Resultados: adversarial 9/10 (safety 63/65); live Haiku 7/8 (safety 35/35, behavior 29/30).
+  Findings: risco residual de ação permitida sem aprovação (EV-01), política inventada (EV-05),
+  read-only garantido pelos grants e não pelo padrão de sessão (EV-08b). Detalhes em
+  [evaluation.md](evaluation.md).
+- Nenhuma funcionalidade de produto alterada; findings registrados, não corrigidos.
+- Testes: 118 (`tests/unit/eval-cases.test.ts`, `tests/integration/eval-adversarial.test.ts`).
+
 ---
 
 ## Balanço final
@@ -209,20 +228,21 @@ nenhuma comparação foi feita ainda.
 
 ### Implementado e verificado
 
-| Entregável                         | Evidência                                                               |
-| ---------------------------------- | ----------------------------------------------------------------------- |
-| Docker Compose, Postgres em `5466` | `pnpm db:up`; `GET /api/health` ok                                      |
-| Schema/migrations versionadas      | 4 migrations, `schema_migrations`                                       |
-| Seed                               | 63 pedidos, cenários fixos #1001–#1011                                  |
-| Agent (`commerceAgent`)            | smoke tests reais (Haiku via gateway) + testes com modelo mock          |
-| Database read capability           | role read-only + guard + timeout + limite + auditoria; testes           |
-| Domain action tools                | `cancelOrder`, `refundPayment`, `sendCustomerNotification`; testes      |
-| Human approval                     | fluxo completo validado na UI real; testes de approve/decline/regressão |
-| Memory                             | follow-up resolvido pelo contexto em chamada real; teste determinístico |
-| Workflow                           | executado na UI real (2 enviadas, 1 ignorada por opt-out); testes       |
-| MCP básico                         | servidor stdio; teste de protocolo real com `MCPClient`                 |
-| Observabilidade/auditoria          | spans no Postgres com ator/canal; `/audit`                              |
-| Testes                             | 112 passando; lint, typecheck e build ok                                |
+| Entregável                         | Evidência                                                                                |
+| ---------------------------------- | ---------------------------------------------------------------------------------------- |
+| Docker Compose, Postgres em `5466` | `pnpm db:up`; `GET /api/health` ok                                                       |
+| Schema/migrations versionadas      | 4 migrations, `schema_migrations`                                                        |
+| Seed                               | 63 pedidos, cenários fixos #1001–#1011                                                   |
+| Agent (`commerceAgent`)            | smoke tests reais (Haiku via gateway) + testes com modelo mock                           |
+| Database read capability           | role read-only + guard + timeout + limite + auditoria; testes                            |
+| Domain action tools                | `cancelOrder`, `refundPayment`, `sendCustomerNotification`; testes                       |
+| Human approval                     | fluxo completo validado na UI real; testes de approve/decline/regressão                  |
+| Memory                             | follow-up resolvido pelo contexto em chamada real; teste determinístico                  |
+| Workflow                           | executado na UI real (2 enviadas, 1 ignorada por opt-out); testes                        |
+| MCP básico                         | servidor stdio; teste de protocolo real com `MCPClient`                                  |
+| Observabilidade/auditoria          | spans no Postgres com ator/canal; `/audit`                                               |
+| Testes                             | 118 passando (112 até a Fase 11 + 6 da Fase 12); lint, typecheck e build ok              |
+| Avaliação (Fase 12)                | adversarial 9/10 (safety 63/65); live Haiku 7/8 (behavior 29/30) — `specs/evaluation.md` |
 
 ### Não implementado (e por quê)
 
@@ -235,7 +255,6 @@ nenhuma comparação foi feita ainda.
 | Guardrail contra "alucinação de ação" | mitigado por instruções + UI + auditoria                              | output processor que valide afirmações de execução contra tool results  |
 | shadcn/ui / AI Elements               | UI simples com Tailwind foi suficiente; evitou dezenas de componentes | adotar se a UI crescer                                                  |
 | Teste E2E automatizado de UI          | fluxo validado manualmente no navegador                               | Playwright cobrindo aprovação e workflow                                |
-| Avaliações (evals) do text-to-SQL     | fora do escopo                                                        | dataset de perguntas + scorers do Mastra                                |
 | Four-eyes (aprovador ≠ solicitante)   | self-approval de manager mantido para demo com um usuário             | `approver.id !== actor.id` em `consumeApproval`                         |
 | RLS para cenários customer-facing     | a POC atende operadores internos                                      | policies RLS por cliente + role por sessão                              |
 | OpenTelemetry                         | tracing nativo do Mastra foi suficiente                               | exporter OTel (`@mastra/observability` bridges)                         |

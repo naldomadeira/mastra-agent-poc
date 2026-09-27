@@ -21,7 +21,9 @@
     "db:seed": "tsx scripts/db-seed.ts",
     "db:setup": "pnpm db:migrate && pnpm db:seed && pnpm db:migrate --test",
     "mcp": "tsx src/mastra/mcp/stdio.ts",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "eval:adversarial": "tsx evals/cli.ts",
+    "eval:live": "tsx evals/cli.ts --live"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.119",

@@ -50,3 +50,6 @@ tmp/
 .vercel
 .idea/
 .vscode/
+
+# evaluation runs (baselines são versionadas em evals/baseline/)
+evals/results/

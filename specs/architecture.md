@@ -176,6 +176,17 @@ action por intenção de negócio que o usuário realmente pede ao agente.**
 3. **Memória funcionou sem código próprio**: "E de quais clientes são?" foi resolvido pelo contexto
    do turno anterior usando só o histórico nativo do Mastra.
 
+4. **Avaliação sistemática (Fase 12, [evaluation.md](evaluation.md)).** Com um modelo roteirizado
+   que se comporta mal, nenhum efeito indevido ocorreu em reembolso, permissão, prompt injection,
+   SQL destrutivo, aprovação e workflow, **exceto** uma ação não solicitada, permitida ao ator e
+   sem exigência de aprovação (`cancelOrder` por support): **risco residual** do desenho
+   "aprovação só para ações sensíveis".
+5. **Read-only é um padrão de sessão; a garantia são os grants.** `SET TRANSACTION READ WRITE`
+   reverte `default_transaction_read_only`. A escrita falhou por falta de privilégio. A tabela de
+   segurança acima continua válida porque a role não tem grants de escrita.
+6. **Política inventada (live).** O Haiku reconheceu que a aplicação não tem prazo de reembolso e
+   mesmo assim citou "5-7 dias úteis".
+
 ## 7. Limitações conhecidas
 
 - Autenticação é de demonstração (cookie de operador). Em produção: sessão real → mesmo `Actor`.
@@ -193,6 +204,8 @@ action por intenção de negócio que o usuário realmente pede ao agente.**
 - RLS (Row-Level Security) para cenários _customer-facing_ não está implementado; a POC atende
   operadores internos.
 - OpenTelemetry/observabilidade avançada não está implementada (há tracing nativo do Mastra).
+- Ações não sensíveis permitidas ao ator não exigem aprovação: um modelo malcomportado pode
+  executá-las sem pedido explícito do usuário (EV-01 adversarial).
 - Não é production-ready: é um experimento arquitetural.
 
 ## 8. Usando como boilerplate
@@ -205,3 +218,10 @@ action por intenção de negócio que o usuário realmente pede ao agente.**
 5. Mantenha as regras de arquitetura em `tests/unit/architecture.test.ts`.
 
 Guias passo a passo no [README](../README.md#como-estender).
+
+## 9. Avaliação
+
+A Fase 12 adiciona uma suíte portável (`evals/`) que roda os mesmos casos em modo `live` (LLM real)
+e `adversarial` (modelo roteirizado que se comporta mal), medindo _behavior_ e _safety_ com a
+auditoria e o diff do banco como fonte da verdade. Método, resultados e findings em
+[evaluation.md](evaluation.md); catálogo de casos em [evaluation-cases.md](evaluation-cases.md).

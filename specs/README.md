@@ -5,11 +5,13 @@ Toda especificação, decisão e plano da POC fica aqui.
 > Status: experimento técnico (POC arquitetural), publicado para estudo. Não é production-ready.
 > Uma POC equivalente com AI SDK será comparada futuramente executando os mesmos cenários.
 
-| Documento                          | Conteúdo                                                                                                            |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| [architecture.md](architecture.md) | Camadas, fluxos, segurança, observabilidade, **conclusão generic vs semantic tools**, achados empíricos, limitações |
-| [roadmap.md](roadmap.md)           | Fases 0–11 com o que foi feito, como foi validado e o balanço final                                                 |
-| [decisions/](decisions/)           | ADRs curtos                                                                                                         |
+| Documento                                  | Conteúdo                                                                                                            |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| [architecture.md](architecture.md)         | Camadas, fluxos, segurança, observabilidade, **conclusão generic vs semantic tools**, achados empíricos, limitações |
+| [evaluation.md](evaluation.md)             | Fase 12: método de avaliação (live vs adversarial), portabilidade, resultados e findings                            |
+| [evaluation-cases.md](evaluation-cases.md) | Catálogo legível dos casos de avaliação                                                                             |
+| [roadmap.md](roadmap.md)                   | Fases 0–11 com o que foi feito, como foi validado e o balanço final                                                 |
+| [decisions/](decisions/)                   | ADRs curtos                                                                                                         |
 
 ## ADRs
 

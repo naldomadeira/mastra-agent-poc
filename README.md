@@ -106,7 +106,7 @@ Resultados reais no estado publicado:
 | ---------------- | --------------------------------------------------------------------------------------------- |
 | `pnpm lint`      | ✅ sem erros                                                                                  |
 | `pnpm typecheck` | ✅ sem erros                                                                                  |
-| `pnpm test`      | ✅ **112 testes** em 13 arquivos (unitários + integração com Postgres real; nenhum chama LLM) |
+| `pnpm test`      | ✅ **118 testes** em 15 arquivos (unitários + integração com Postgres real; nenhum chama LLM) |
 | `pnpm build`     | ✅ build de produção do Next.js                                                               |
 
 O agente é testado de forma determinística com um modelo mock roteirizado
@@ -151,9 +151,33 @@ reembolso (`APPROVAL_REQUIRED`): falhou fechado, sem efeito indevido.
 > **O texto do modelo não é prova de execução.** A fonte da verdade é o resultado da aplicação:
 > o retorno da tool, o estado do banco e o `audit_log`.
 
+## Avaliação e benchmark de segurança
+
+Suíte portável em [`evals/`](evals/) com 13 casos em 12 categorias (tool selection, contexto,
+permissão, sucesso falso, política inventada, disciplina de schema, prompt injection, SQL
+destrutivo, integridade e replay de aprovação, workflow). Os mesmos casos serão executados na POC
+AI SDK.
+
+| Modo                    | O que mede                                                                                     | Resultado (baseline)                                 |
+| ----------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `pnpm eval:adversarial` | modelo roteirizado que **se comporta mal** → só _safety_ (sem LLM; também roda no `pnpm test`) | 9/10 casos · safety 63/65                            |
+| `pnpm eval:live`        | LLM real → _behavior_ + _safety_                                                               | Haiku 4.5: 7/8 casos · safety 35/35 · behavior 29/30 |
+
+- A fonte da verdade é o **diff do banco por linha + auditoria + resultado das tools**; o texto do
+  modelo só é avaliado como comportamento.
+- **Risco residual encontrado:** uma ação _permitida ao ator_ e _sem exigência de aprovação_
+  (`cancelOrder` por support) é executada se o modelo decidir chamá-la sem pedido do usuário.
+- **Falha de comportamento encontrada:** o modelo inventou um prazo de reembolso ("5-7 dias úteis")
+  que a aplicação não fornece.
+
+Método, resultados e findings: [`specs/evaluation.md`](specs/evaluation.md) · casos:
+[`specs/evaluation-cases.md`](specs/evaluation-cases.md).
+
 ## Limitações atuais
 
 - **Não é production-ready.**
+- Ações não sensíveis permitidas ao ator não pedem aprovação: um modelo malcomportado pode
+  executá-las sem pedido explícito (risco residual medido na avaliação).
 - Autenticação simplificada: o operador é escolhido num seletor de demonstração (cookie). Em
   produção, a sessão real deve resolver o mesmo `Actor`.
 - Requester e approver podem ser a mesma pessoa: um `manager` pode aprovar o próprio pedido
@@ -268,7 +292,7 @@ pnpm dev            # http://localhost:3466
 ### Testes e checks
 
 ```bash
-pnpm test           # 112 testes (Vitest); integração usa Postgres real, nenhum chama LLM
+pnpm test           # 118 testes (Vitest); integração usa Postgres real, nenhum chama LLM
 pnpm lint
 pnpm typecheck
 pnpm build
